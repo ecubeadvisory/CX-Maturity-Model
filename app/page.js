@@ -1,5 +1,6 @@
 "use client";
-import React, { useMemo, useState } from "react";
+
+import React, { useEffect, useMemo, useState } from "react";
 
 const options = [
   { label: "Select", value: 0 },
@@ -54,8 +55,24 @@ const domains = [
 export default function Page() {
   const [answers, setAnswers] = useState({});
 
+  // Load saved data
+  useEffect(() => {
+    const saved = localStorage.getItem("cx-assessment");
+    if (saved) setAnswers(JSON.parse(saved));
+  }, []);
+
+  // Save automatically
+  useEffect(() => {
+    localStorage.setItem("cx-assessment", JSON.stringify(answers));
+  }, [answers]);
+
   const handleChange = (d, q, val) => {
     setAnswers({ ...answers, [`${d}-${q}`]: Number(val) });
+  };
+
+  const reset = () => {
+    setAnswers({});
+    localStorage.removeItem("cx-assessment");
   };
 
   const scores = useMemo(() => {
@@ -69,6 +86,15 @@ export default function Page() {
   const overall =
     scores.reduce((a, b) => a + b.score, 0) / scores.length || 0;
 
+  const shareResults = () => {
+    const text = `CX Maturity Score: ${overall.toFixed(2)} / 3`;
+    if (navigator.share) {
+      navigator.share({ title: "CX Assessment", text });
+    } else {
+      alert("Use browser share or print to export");
+    }
+  };
+
   return (
     <div style={{ padding: 20, fontFamily: "Arial" }}>
       <h1>CX Maturity Assessment</h1>
@@ -81,6 +107,7 @@ export default function Page() {
             <div key={i} style={{ marginBottom: 10 }}>
               <p>{q}</p>
               <select
+                value={answers[`${d}-${i}`] || 0}
                 onChange={(e) => handleChange(d, i, e.target.value)}
               >
                 {options.map((opt) => (
@@ -102,6 +129,20 @@ export default function Page() {
           {s.name}: {s.score.toFixed(2)}
         </p>
       ))}
+
+      <div style={{ marginTop: 20 }}>
+        <button onClick={reset} style={{ marginRight: 10 }}>
+          Reset
+        </button>
+
+        <button onClick={shareResults} style={{ marginRight: 10 }}>
+          Share
+        </button>
+
+        <button onClick={() => window.print()}>
+          Export PDF
+        </button>
+      </div>
     </div>
   );
 }
